@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-kit/log/level"
-	ovn "github.com/greenpau/ovn_exporter/pkg/ovn_exporter"
+	ovn "github.com/Liquescent-Development/ovn_exporter/pkg/ovn_exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -95,7 +96,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\n%s - Prometheus Exporter for Open Virtual Network (OVN)\n\n", ovn.GetExporterName())
 		fmt.Fprintf(os.Stderr, "Usage: %s [arguments]\n\n", ovn.GetExporterName())
 		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nDocumentation: https://github.com/greenpau/ovn_exporter/\n\n")
+		fmt.Fprintf(os.Stderr, "\nDocumentation: https://github.com/Liquescent-Development/ovn_exporter/\n\n")
 	}
 	flag.Usage = usageHelp
 	flag.Parse()
@@ -186,8 +187,20 @@ func main() {
 	exporter.SetPollInterval(int64(pollInterval))
 	prometheus.MustRegister(exporter)
 
-	http.Handle(metricsPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// Create a new ServeMux instead of using DefaultServeMux for better security
+	mux := http.NewServeMux()
+	mux.Handle(metricsPath, promhttp.Handler())
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Add security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+
 		w.Write([]byte(`<html>
              <head><title>OVN Exporter</title></head>
              <body>
@@ -197,8 +210,17 @@ func main() {
              </html>`))
 	})
 
-	level.Info(logger).Log("listen_on ", listenAddress)
-	if err := http.ListenAndServe(listenAddress, nil); err != nil {
+	// Create server with security configurations
+	server := &http.Server{
+		Addr:         listenAddress,
+		Handler:      mux,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	level.Info(logger).Log("listen_on", listenAddress)
+	if err := server.ListenAndServe(); err != nil {
 		level.Error(logger).Log(
 			"msg", "listener failed",
 			"error", err.Error(),

@@ -14,11 +14,11 @@ builds:
         -X github.com/prometheus/common/version.Branch={{ .Branch }}
         -X github.com/prometheus/common/version.BuildUser=greenpau
         -X github.com/prometheus/common/version.BuildDate={{ .Date }}
-        -X github.com/greenpau/ovn_exporter/pkg/ovn_exporter.appVersion={{ .Version }}
-        -X github.com/greenpau/ovn_exporter/pkg/ovn_exporter.gitBranch={{ .Branch }}
-        -X github.com/greenpau/ovn_exporter/pkg/ovn_exporter.gitCommit={{ .Commit }}
-        -X github.com/greenpau/ovn_exporter/pkg/ovn_exporter.buildUser=greenpau
-        -X github.com/greenpau/ovn_exporter/pkg/ovn_exporter.buildDate={{ .Date }}
+        -X github.com/Liquescent-Development/ovn_exporter/pkg/ovn_exporter.appVersion={{ .Version }}
+        -X github.com/Liquescent-Development/ovn_exporter/pkg/ovn_exporter.gitBranch={{ .Branch }}
+        -X github.com/Liquescent-Development/ovn_exporter/pkg/ovn_exporter.gitCommit={{ .Commit }}
+        -X github.com/Liquescent-Development/ovn_exporter/pkg/ovn_exporter.buildUser=Liquescent-Development
+        -X github.com/Liquescent-Development/ovn_exporter/pkg/ovn_exporter.buildDate={{ .Date }}
     main: './cmd/ovn_exporter'
     asmflags:
       - 'all=-trimpath={{.Env.GOPATH}}'

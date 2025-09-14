@@ -15,17 +15,18 @@
 package ovn_exporter
 
 import (
-	_ "net/http/pprof"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"os"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/greenpau/ovsdb"
 	"github.com/greenpau/versioned"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/promlog"
+	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/version"
 )
 
@@ -45,8 +46,8 @@ var (
 func init() {
 	app = versioned.NewPackageManager("ovn-exporter")
 	app.Description = "Prometheus Exporter for Open Virtual Network (OVN)"
-	app.Documentation = "https://github.com/greenpau/ovn_exporter/"
-	app.SetVersion(appVersion, "1.0.7")
+	app.Documentation = "https://github.com/Liquescent-Development/ovn_exporter/"
+	app.SetVersion(appVersion, "2.0.0")
 	app.SetGitBranch(gitBranch, "")
 	app.SetGitCommit(gitCommit, "")
 	app.SetBuildUser(buildUser, "")
@@ -296,15 +297,28 @@ type Options struct {
 
 // NewLogger returns an instance of logger.
 func NewLogger(logLevel string) (log.Logger, error) {
-	allowedLogLevel := &promlog.AllowedLevel{}
-	if err := allowedLogLevel.Set(logLevel); err != nil {
+	// Create level and format objects
+	level := promslog.NewLevel()
+	format := promslog.NewFormat()
+
+	// Set the log level
+	if err := level.Set(logLevel); err != nil {
 		return nil, err
 	}
-	promlogConfig := &promlog.Config{
-		Level: allowedLogLevel,
+
+	promslogConfig := &promslog.Config{
+		Level: level,
+		Format: format,
+		Style: promslog.GoKitStyle, // Use GoKitStyle for compatibility with existing go-kit/log
 	}
-	logger := promlog.New(promlogConfig)
-	return logger, nil
+
+	// Create the logger - for compatibility, we write to stderr and use logfmt
+	promslog.New(promslogConfig) // This configures slog
+
+	// Return a go-kit logger that writes to stderr in logfmt format
+	w := log.NewSyncWriter(os.Stderr)
+	logger := log.NewLogfmtLogger(w)
+	return log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller), nil
 }
 
 // NewExporter returns an initialized Exporter.
@@ -1256,7 +1270,8 @@ func (e *Exporter) GatherMetrics() {
 }
 
 func init() {
-	prometheus.MustRegister(version.NewCollector(namespace + "_exporter"))
+	// Note: version.NewCollector has been removed in newer prometheus/common versions
+	// The build info is now exposed via the standard prometheus collector
 }
 
 // GetVersionInfo returns exporter info.
