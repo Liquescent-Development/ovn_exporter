@@ -17,7 +17,7 @@ This exporter collects metrics from the following OVN components:
 * `OVN Southbound` database
 * `Open_vSwitch` database
 
-## What's New in v2.0.0
+## What's New in v2.1.1
 
 ### Breaking Changes
 - **Go 1.24+ required** (upgraded from Go 1.20)
@@ -49,13 +49,13 @@ Download the latest release for your platform from the [releases page](https://g
 
 ```bash
 # Linux amd64
-wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.0.0/ovn-exporter_2.0.0_linux_amd64.tar.gz
-tar xvzf ovn-exporter_2.0.0_linux_amd64.tar.gz
+wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.1.1/ovn-exporter_2.1.1_linux_amd64.tar.gz
+tar xvzf ovn-exporter_2.1.1_linux_amd64.tar.gz
 sudo mv ovn-exporter /usr/local/bin/
 
 # Linux arm64
-wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.0.0/ovn-exporter_2.0.0_linux_arm64.tar.gz
-tar xvzf ovn-exporter_2.0.0_linux_arm64.tar.gz
+wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.1.1/ovn-exporter_2.1.1_linux_arm64.tar.gz
+tar xvzf ovn-exporter_2.1.1_linux_arm64.tar.gz
 sudo mv ovn-exporter /usr/local/bin/
 ```
 
