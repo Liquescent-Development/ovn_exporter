@@ -7,12 +7,16 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
     ldflags:
       - -w -s
         -X github.com/prometheus/common/version.Version={{ .Version }}
         -X github.com/prometheus/common/version.Revision={{ .Commit }}
         -X github.com/prometheus/common/version.Branch={{ .Branch }}
-        -X github.com/prometheus/common/version.BuildUser=greenpau
+        -X github.com/prometheus/common/version.BuildUser=Liquescent-Development
         -X github.com/prometheus/common/version.BuildDate={{ .Date }}
         -X github.com/Liquescent-Development/ovn_exporter/pkg/ovn_exporter.appVersion={{ .Version }}
         -X github.com/Liquescent-Development/ovn_exporter/pkg/ovn_exporter.gitBranch={{ .Branch }}
