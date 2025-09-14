@@ -74,13 +74,13 @@ var (
 		}, nil,
 	)
 	requestErrors = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "failed_req_count"),
-		"The number of failed requests to OVN stack.",
+		prometheus.BuildFQName(namespace, "", "failed_requests_total"),
+		"The total number of failed requests to OVN stack.",
 		[]string{"system_id"}, nil,
 	)
 	nextPoll = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "next_poll"),
-		"The timestamp of the next potential poll of OVN stack.",
+		prometheus.BuildFQName(namespace, "", "next_poll_timestamp_seconds"),
+		"The timestamp of the next potential poll of OVN stack in seconds.",
 		[]string{"system_id"}, nil,
 	)
 	pid = prometheus.NewDesc(
@@ -89,18 +89,18 @@ var (
 		[]string{"system_id", "component", "user", "group"}, nil,
 	)
 	logFileSize = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "log_file_size"),
-		"The size of a log file associated with an OVN component.",
+		prometheus.BuildFQName(namespace, "", "log_file_size_bytes"),
+		"The size of a log file associated with an OVN component in bytes.",
 		[]string{"system_id", "component", "filename"}, nil,
 	)
 	logEventStat = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "log_event_count"),
-		"The number of recorded log meessage associated with an OVN component by log severity level and source.",
+		prometheus.BuildFQName(namespace, "", "log_events_total"),
+		"The total number of recorded log messages associated with an OVN component by log severity level and source.",
 		[]string{"system_id", "component", "severity", "source"}, nil,
 	)
 	dbFileSize = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "db_file_size"),
-		"The size of a database file associated with an OVN component.",
+		prometheus.BuildFQName(namespace, "", "db_file_size_bytes"),
+		"The size of a database file associated with an OVN component in bytes.",
 		[]string{"system_id", "component", "filename"}, nil,
 	)
 	chassisInfo = prometheus.NewDesc(
@@ -169,8 +169,8 @@ var (
 		[]string{"system_id", "component", "event"}, nil,
 	)
 	memUsage = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "memory_usage"),
-		"The memory usage.",
+		prometheus.BuildFQName(namespace, "", "memory_usage_bytes"),
+		"The memory usage in bytes.",
 		[]string{"system_id", "component", "facility"}, nil,
 	)
 
