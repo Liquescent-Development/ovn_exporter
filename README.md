@@ -17,6 +17,13 @@ This exporter collects metrics from the following OVN components:
 * `OVN Southbound` database
 * `Open_vSwitch` database
 
+## What's New in v2.1.2
+
+### New Features
+- Added `ovn_requests_total` metric to track total number of requests to OVN stack
+- Added `ovn_successful_requests_total` metric to track successful requests to OVN stack
+- Improved request tracking and monitoring capabilities for better observability
+
 ## What's New in v2.1.1
 
 ### Breaking Changes
@@ -49,13 +56,13 @@ Download the latest release for your platform from the [releases page](https://g
 
 ```bash
 # Linux amd64
-wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.1.1/ovn-exporter_2.1.1_linux_amd64.tar.gz
-tar xvzf ovn-exporter_2.1.1_linux_amd64.tar.gz
+wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.1.2/ovn-exporter_2.1.2_linux_amd64.tar.gz
+tar xvzf ovn-exporter_2.1.2_linux_amd64.tar.gz
 sudo mv ovn-exporter /usr/local/bin/
 
 # Linux arm64
-wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.1.1/ovn-exporter_2.1.1_linux_arm64.tar.gz
-tar xvzf ovn-exporter_2.1.1_linux_arm64.tar.gz
+wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.1.2/ovn-exporter_2.1.2_linux_arm64.tar.gz
+tar xvzf ovn-exporter_2.1.2_linux_arm64.tar.gz
 sudo mv ovn-exporter /usr/local/bin/
 ```
 
@@ -196,6 +203,52 @@ Example metrics:
 - `ovn_cluster_*` - Cluster health and Raft consensus metrics
 - `ovn_logical_switch_*` - Logical network topology metrics
 - `ovn_chassis_info` - Chassis status and information
+
+## Grafana Dashboards
+
+Pre-built Grafana dashboards are available in the [`dashboards/`](dashboards/) directory to help you visualize and monitor your OVN infrastructure:
+
+### 🏗️ OVN System Overview
+**File**: [`ovn-system-overview.json`](dashboards/ovn-system-overview.json)
+
+A comprehensive infrastructure monitoring dashboard for system operators featuring:
+- Real-time OVN stack health status
+- System availability and error rate monitoring
+- Infrastructure topology overview (chassis, switches, routers, ports)
+- Database and log file size trends
+- Component-wise log event analysis
+- Active chassis information table
+
+**Target Audience**: System operators, infrastructure teams, NOC engineers
+
+### 📊 OVN SLA/SLO Performance
+**File**: [`ovn-sla-performance.json`](dashboards/ovn-sla-performance.json)
+
+A customer experience focused dashboard for tracking service level objectives:
+- SLA uptime compliance gauges with configurable time periods
+- Network availability percentage with threshold alerting
+- Error rate monitoring and SLA impact analysis
+- Response time tracking and performance metrics
+- Active resource monitoring (chassis, tunnels)
+- SLA compliance trends and violation tracking
+- Memory usage analysis by component
+
+**Target Audience**: Service delivery teams, customer success managers, SLA compliance officers
+
+**SLA Thresholds**:
+- 🟢 **Excellent**: ≥99.9% uptime
+- 🟡 **Warning**: 99.0-99.9% uptime
+- 🔴 **Critical**: <99.0% uptime
+
+### Quick Import
+
+1. Open Grafana and navigate to **Dashboards** > **Import**
+2. Upload the JSON file or paste the dashboard content
+3. Select your Prometheus datasource
+4. Configure any variables (datasource, SLA period)
+5. Save and enjoy!
+
+For detailed setup instructions, customization options, and alerting integration, see [dashboards/README.md](dashboards/README.md).
 
 ## Prometheus Configuration
 

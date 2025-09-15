@@ -47,7 +47,7 @@ func init() {
 	app = versioned.NewPackageManager("ovn-exporter")
 	app.Description = "Prometheus Exporter for Open Virtual Network (OVN)"
 	app.Documentation = "https://github.com/Liquescent-Development/ovn_exporter/"
-	app.SetVersion(appVersion, "2.1.1")
+	app.SetVersion(appVersion, "2.1.2")
 	app.SetGitBranch(gitBranch, "")
 	app.SetGitCommit(gitCommit, "")
 	app.SetBuildUser(buildUser, "")
@@ -76,6 +76,16 @@ var (
 	requestErrors = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "failed_requests_total"),
 		"The total number of failed requests to OVN stack.",
+		[]string{"system_id"}, nil,
+	)
+	requestsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "requests_total"),
+		"The total number of requests to OVN stack.",
+		[]string{"system_id"}, nil,
+	)
+	requestsSuccessful = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "successful_requests_total"),
+		"The total number of successful requests to OVN stack.",
 		[]string{"system_id"}, nil,
 	)
 	nextPoll = prometheus.NewDesc(
@@ -284,7 +294,9 @@ type Exporter struct {
 	timeout              int
 	pollInterval         int64
 	errors               int64
-	errorsLocker         sync.RWMutex
+	totalRequests        int64
+	successfulRequests   int64
+	requestsLocker       sync.RWMutex
 	nextCollectionTicker int64
 	metrics              []prometheus.Metric
 	logger               log.Logger
@@ -368,6 +380,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
 	ch <- info
 	ch <- requestErrors
+	ch <- requestsTotal
+	ch <- requestsSuccessful
 	ch <- nextPoll
 	ch <- pid
 	ch <- logFileSize
@@ -410,9 +424,27 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // IncrementErrorCounter increases the counter of failed queries
 // to OVN server.
 func (e *Exporter) IncrementErrorCounter() {
-	e.errorsLocker.Lock()
-	defer e.errorsLocker.Unlock()
+	e.requestsLocker.Lock()
+	defer e.requestsLocker.Unlock()
 	atomic.AddInt64(&e.errors, 1)
+	atomic.AddInt64(&e.totalRequests, 1)
+}
+
+// IncrementRequestCounter increases the counter of total requests
+// to OVN server.
+func (e *Exporter) IncrementRequestCounter() {
+	e.requestsLocker.Lock()
+	defer e.requestsLocker.Unlock()
+	atomic.AddInt64(&e.totalRequests, 1)
+}
+
+// IncrementSuccessCounter increases the counter of successful queries
+// to OVN server.
+func (e *Exporter) IncrementSuccessCounter() {
+	e.requestsLocker.Lock()
+	defer e.requestsLocker.Unlock()
+	atomic.AddInt64(&e.successfulRequests, 1)
+	atomic.AddInt64(&e.totalRequests, 1)
 }
 
 // Collect implements prometheus.Collector.
@@ -446,6 +478,18 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			requestErrors,
 			prometheus.CounterValue,
 			float64(e.errors),
+			e.Client.System.ID,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			requestsTotal,
+			prometheus.CounterValue,
+			float64(e.totalRequests),
+			e.Client.System.ID,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			requestsSuccessful,
+			prometheus.CounterValue,
+			float64(e.successfulRequests),
 			e.Client.System.ID,
 		)
 		ch <- prometheus.MustNewConstMetric(
@@ -505,6 +549,7 @@ func (e *Exporter) GatherMetrics() {
 		e.IncrementErrorCounter()
 		upValue = 0
 	} else {
+		e.IncrementSuccessCounter()
 		level.Debug(e.logger).Log(
 			"msg", "GetSystemInfo() successful",
 			"vswitch_name", e.Client.Database.Vswitch.Name,
@@ -538,16 +583,20 @@ func (e *Exporter) GatherMetrics() {
 			)
 			e.IncrementErrorCounter()
 			upValue = 0
+		} else {
+			e.IncrementSuccessCounter()
 		}
-		e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
-			pid,
-			prometheus.GaugeValue,
-			float64(p.ID),
-			e.Client.System.ID,
-			component,
-			p.User,
-			p.Group,
-		))
+		if p.ID > 0 {
+			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+				pid,
+				prometheus.GaugeValue,
+				float64(p.ID),
+				e.Client.System.ID,
+				component,
+				p.User,
+				p.Group,
+			))
+		}
 		level.Debug(e.logger).Log(
 			"msg", "GatherMetrics() completed GetProcessInfo()",
 			"component", component,
@@ -578,6 +627,8 @@ func (e *Exporter) GatherMetrics() {
 			)
 			e.IncrementErrorCounter()
 			continue
+		} else {
+			e.IncrementSuccessCounter()
 		}
 		level.Debug(e.logger).Log(
 			"msg", "GatherMetrics() completed GetLogFileInfo()",
@@ -607,6 +658,8 @@ func (e *Exporter) GatherMetrics() {
 			)
 			e.IncrementErrorCounter()
 			continue
+		} else {
+			e.IncrementSuccessCounter()
 		}
 		level.Debug(e.logger).Log(
 			"msg", "GatherMetrics() completed GetLogFileEventStats()",
@@ -642,6 +695,7 @@ func (e *Exporter) GatherMetrics() {
 		e.IncrementErrorCounter()
 		upValue = 0
 	} else {
+		e.IncrementSuccessCounter()
 		for _, vtep := range vteps {
 			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
 				chassisInfo,
@@ -674,6 +728,7 @@ func (e *Exporter) GatherMetrics() {
 		e.IncrementErrorCounter()
 		upValue = 0
 	} else {
+		e.IncrementSuccessCounter()
 		for _, lsw := range lsws {
 			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
 				logicalSwitchInfo,
@@ -744,6 +799,7 @@ func (e *Exporter) GatherMetrics() {
 		e.IncrementErrorCounter()
 		upValue = 0
 	} else {
+		e.IncrementSuccessCounter()
 		for _, port := range lswps {
 			macAddr := "<nil>"
 			ipAddr := "<nil>"
@@ -821,6 +877,7 @@ func (e *Exporter) GatherMetrics() {
 				"system_id", e.Client.System.ID,
 			)
 		} else {
+			e.IncrementSuccessCounter()
 			level.Debug(e.logger).Log(
 				"msg", "GatherMetrics() completed AppListCommands()",
 				"component", component,
@@ -841,6 +898,7 @@ func (e *Exporter) GatherMetrics() {
 					)
 					e.IncrementErrorCounter()
 				} else {
+					e.IncrementSuccessCounter()
 					for event, metric := range metrics {
 						//log.Infof("%s: %s, %s", component, name, metric)
 						for period, value := range metric {
@@ -888,6 +946,7 @@ func (e *Exporter) GatherMetrics() {
 					)
 					e.IncrementErrorCounter()
 				} else {
+					e.IncrementSuccessCounter()
 					for facility, value := range metrics {
 						e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
 							memUsage,
@@ -919,7 +978,7 @@ func (e *Exporter) GatherMetrics() {
 						"system_id", e.Client.System.ID,
 						"error", err.Error(),
 					)
-					//e.IncrementErrorCounter()
+					e.IncrementRequestCounter()
 					e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
 						clusterEnabled,
 						prometheus.GaugeValue,
@@ -928,6 +987,7 @@ func (e *Exporter) GatherMetrics() {
 						component,
 					))
 				} else {
+					e.IncrementRequestCounter()
 					isClusterEnabled = true
 					switch component {
 					case "ovsdb-server-southbound":
@@ -1155,6 +1215,8 @@ func (e *Exporter) GatherMetrics() {
 				"error", err.Error(),
 			)
 			e.IncrementErrorCounter()
+		} else {
+			e.IncrementSuccessCounter()
 		}
 		e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
 			networkPortUp,
@@ -1184,6 +1246,8 @@ func (e *Exporter) GatherMetrics() {
 				"error", err.Error(),
 			)
 			e.IncrementErrorCounter()
+		} else {
+			e.IncrementSuccessCounter()
 		}
 		e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
 			networkPortUp,
@@ -1214,6 +1278,8 @@ func (e *Exporter) GatherMetrics() {
 					"error", err.Error(),
 				)
 				e.IncrementErrorCounter()
+			} else {
+				e.IncrementSuccessCounter()
 			}
 			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
 				networkPortUp,
@@ -1254,6 +1320,20 @@ func (e *Exporter) GatherMetrics() {
 	))
 
 	e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+		requestsTotal,
+		prometheus.CounterValue,
+		float64(e.totalRequests),
+		e.Client.System.ID,
+	))
+
+	e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+		requestsSuccessful,
+		prometheus.CounterValue,
+		float64(e.successfulRequests),
+		e.Client.System.ID,
+	))
+
+	e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
 		nextPoll,
 		prometheus.CounterValue,
 		float64(e.nextCollectionTicker),
@@ -1266,7 +1346,6 @@ func (e *Exporter) GatherMetrics() {
 		"msg", "GatherMetrics() returns",
 		"system_id", e.Client.System.ID,
 	)
-	return
 }
 
 func init() {
