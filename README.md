@@ -17,6 +17,19 @@ This exporter collects metrics from the following OVN components:
 * `OVN Southbound` database
 * `Open_vSwitch` database
 
+## What's New in v2.2.0
+
+### New Features
+- **Logical Router Metrics**: Added comprehensive metrics for OVN logical routers
+  - `ovn_logical_router_info` - Basic router information
+  - `ovn_logical_router_ports` - Number of router ports
+  - `ovn_logical_router_static_routes` - Static routes count
+  - `ovn_logical_router_nat_rules` - NAT rules count
+  - `ovn_logical_router_load_balancers` - Load balancers count
+  - `ovn_logical_router_policies` - Routing policies count
+  - `ovn_logical_router_external_id` - External IDs for routers
+- Complete L3 network topology visibility alongside existing L2 metrics
+
 ## What's New in v2.1.2
 
 ### New Features
@@ -56,13 +69,13 @@ Download the latest release for your platform from the [releases page](https://g
 
 ```bash
 # Linux amd64
-wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.1.2/ovn-exporter_2.1.2_linux_amd64.tar.gz
-tar xvzf ovn-exporter_2.1.2_linux_amd64.tar.gz
+wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.2.0/ovn-exporter_2.2.0_linux_amd64.tar.gz
+tar xvzf ovn-exporter_2.2.0_linux_amd64.tar.gz
 sudo mv ovn-exporter /usr/local/bin/
 
 # Linux arm64
-wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.1.2/ovn-exporter_2.1.2_linux_arm64.tar.gz
-tar xvzf ovn-exporter_2.1.2_linux_arm64.tar.gz
+wget https://github.com/Liquescent-Development/ovn_exporter/releases/download/v2.2.0/ovn-exporter_2.2.0_linux_arm64.tar.gz
+tar xvzf ovn-exporter_2.2.0_linux_arm64.tar.gz
 sudo mv ovn-exporter /usr/local/bin/
 ```
 

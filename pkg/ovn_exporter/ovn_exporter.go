@@ -15,6 +15,7 @@
 package ovn_exporter
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,7 +48,7 @@ func init() {
 	app = versioned.NewPackageManager("ovn-exporter")
 	app.Description = "Prometheus Exporter for Open Virtual Network (OVN)"
 	app.Documentation = "https://github.com/Liquescent-Development/ovn_exporter/"
-	app.SetVersion(appVersion, "2.1.2")
+	app.SetVersion(appVersion, "2.2.0")
 	app.SetGitBranch(gitBranch, "")
 	app.SetGitCommit(gitCommit, "")
 	app.SetBuildUser(buildUser, "")
@@ -161,6 +162,41 @@ var (
 	logicalSwitchPortTunnelKey = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "logical_switch_port_tunnel_key"),
 		"The value of the tunnel key associated with the logical switch port.",
+		[]string{"system_id", "uuid"}, nil,
+	)
+	logicalRouterInfo = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "logical_router_info"),
+		"The information about OVN logical router. This metric is always up (1).",
+		[]string{"system_id", "uuid", "name"}, nil,
+	)
+	logicalRouterExternalIDs = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "logical_router_external_id"),
+		"Provides the external IDs and values associated with OVN logical routers. This metric is always up (1).",
+		[]string{"system_id", "uuid", "key", "value"}, nil,
+	)
+	logicalRouterPorts = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "logical_router_ports"),
+		"The number of logical router ports connected to the OVN logical router.",
+		[]string{"system_id", "uuid"}, nil,
+	)
+	logicalRouterStaticRoutes = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "logical_router_static_routes"),
+		"The number of static routes configured on the OVN logical router.",
+		[]string{"system_id", "uuid"}, nil,
+	)
+	logicalRouterNatRules = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "logical_router_nat_rules"),
+		"The number of NAT rules configured on the OVN logical router.",
+		[]string{"system_id", "uuid"}, nil,
+	)
+	logicalRouterLoadBalancers = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "logical_router_load_balancers"),
+		"The number of load balancers associated with the OVN logical router.",
+		[]string{"system_id", "uuid"}, nil,
+	)
+	logicalRouterPolicies = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "logical_router_policies"),
+		"The number of policies configured on the OVN logical router.",
 		[]string{"system_id", "uuid"}, nil,
 	)
 	networkPortUp = prometheus.NewDesc(
@@ -395,6 +431,13 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- logicalSwitchTunnelKey
 	ch <- logicalSwitchPortInfo
 	ch <- logicalSwitchPortTunnelKey
+	ch <- logicalRouterInfo
+	ch <- logicalRouterExternalIDs
+	ch <- logicalRouterPorts
+	ch <- logicalRouterStaticRoutes
+	ch <- logicalRouterNatRules
+	ch <- logicalRouterLoadBalancers
+	ch <- logicalRouterPolicies
 	ch <- networkPortUp
 	ch <- covAvg
 	ch <- covTotal
@@ -845,6 +888,100 @@ func (e *Exporter) GatherMetrics() {
 	}
 	level.Debug(e.logger).Log(
 		"msg", "GatherMetrics() completed GetLogicalSwitchPorts()",
+		"system_id", e.Client.System.ID,
+	)
+
+	// Gather Logical Router metrics
+	level.Debug(e.logger).Log(
+		"msg", "GatherMetrics() calls GetLogicalRouters()",
+		"system_id", e.Client.System.ID,
+	)
+	routers, err := e.GetLogicalRouters()
+	if err != nil {
+		level.Error(e.logger).Log(
+			"msg", "GetLogicalRouters() failed",
+			"northbound_db_name", e.Client.Database.Northbound.Name,
+			"system_id", e.Client.System.ID,
+			"error", err.Error(),
+		)
+		e.IncrementErrorCounter()
+		upValue = 0
+	} else {
+		e.IncrementSuccessCounter()
+		for _, router := range routers {
+			// Basic router info metric
+			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+				logicalRouterInfo,
+				prometheus.GaugeValue,
+				1,
+				e.Client.System.ID,
+				router.UUID,
+				router.Name,
+			))
+
+			// Router ports count
+			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+				logicalRouterPorts,
+				prometheus.GaugeValue,
+				float64(len(router.Ports)),
+				e.Client.System.ID,
+				router.UUID,
+			))
+
+			// Static routes count
+			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+				logicalRouterStaticRoutes,
+				prometheus.GaugeValue,
+				float64(len(router.StaticRoutes)),
+				e.Client.System.ID,
+				router.UUID,
+			))
+
+			// NAT rules count
+			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+				logicalRouterNatRules,
+				prometheus.GaugeValue,
+				float64(len(router.NAT)),
+				e.Client.System.ID,
+				router.UUID,
+			))
+
+			// Load balancers count
+			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+				logicalRouterLoadBalancers,
+				prometheus.GaugeValue,
+				float64(len(router.LoadBalancer)),
+				e.Client.System.ID,
+				router.UUID,
+			))
+
+			// Policies count
+			e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+				logicalRouterPolicies,
+				prometheus.GaugeValue,
+				float64(len(router.Policies)),
+				e.Client.System.ID,
+				router.UUID,
+			))
+
+			// External IDs
+			if len(router.ExternalIDs) > 0 {
+				for k, v := range router.ExternalIDs {
+					e.metrics = append(e.metrics, prometheus.MustNewConstMetric(
+						logicalRouterExternalIDs,
+						prometheus.GaugeValue,
+						1,
+						e.Client.System.ID,
+						router.UUID,
+						k,
+						v,
+					))
+				}
+			}
+		}
+	}
+	level.Debug(e.logger).Log(
+		"msg", "GatherMetrics() completed GetLogicalRouters()",
 		"system_id", e.Client.System.ID,
 	)
 
@@ -1346,6 +1483,112 @@ func (e *Exporter) GatherMetrics() {
 		"msg", "GatherMetrics() returns",
 		"system_id", e.Client.System.ID,
 	)
+}
+
+// OvnLogicalRouter holds basic information about a logical router
+type OvnLogicalRouter struct {
+	UUID               string            `json:"uuid" yaml:"uuid"`
+	Name               string            `json:"name" yaml:"name"`
+	ExternalIDs        map[string]string `json:"external_ids" yaml:"external_ids"`
+	Ports              []string          `json:"ports" yaml:"ports"`
+	StaticRoutes       []string          `json:"static_routes" yaml:"static_routes"`
+	NAT                []string          `json:"nat" yaml:"nat"`
+	LoadBalancer       []string          `json:"load_balancer" yaml:"load_balancer"`
+	Policies           []string          `json:"policies" yaml:"policies"`
+}
+
+// GetLogicalRouters returns a list of OVN logical routers from the Northbound database
+func (e *Exporter) GetLogicalRouters() ([]*OvnLogicalRouter, error) {
+	routers := []*OvnLogicalRouter{}
+
+	// Query the Logical_Router table in the Northbound database
+	query := "SELECT _uuid, external_ids, name, ports, static_routes, nat, load_balancer, policies FROM Logical_Router"
+	result, err := e.Client.Database.Northbound.Client.Transact(e.Client.Database.Northbound.Name, query)
+	if err != nil {
+		return nil, fmt.Errorf("%s: 'Logical_Router' table error: %s", e.Client.Database.Northbound.Name, err)
+	}
+
+	if len(result.Rows) == 0 {
+		// No routers found is not an error, just return empty list
+		return routers, nil
+	}
+
+	for _, row := range result.Rows {
+		router := &OvnLogicalRouter{}
+
+		// Get UUID
+		if r, dt, err := row.GetColumnValue("_uuid", result.Columns); err == nil && dt == "string" {
+			router.UUID = r.(string)
+		} else {
+			continue
+		}
+
+		// Get Name
+		if r, dt, err := row.GetColumnValue("name", result.Columns); err == nil && dt == "string" {
+			router.Name = r.(string)
+		}
+
+		// Get External IDs
+		if r, dt, err := row.GetColumnValue("external_ids", result.Columns); err == nil && dt == "map[string]string" {
+			router.ExternalIDs = r.(map[string]string)
+		} else {
+			router.ExternalIDs = make(map[string]string)
+		}
+
+		// Get Ports
+		if r, dt, err := row.GetColumnValue("ports", result.Columns); err == nil {
+			switch dt {
+			case "string":
+				router.Ports = append(router.Ports, r.(string))
+			case "[]string":
+				router.Ports = r.([]string)
+			}
+		}
+
+		// Get Static Routes
+		if r, dt, err := row.GetColumnValue("static_routes", result.Columns); err == nil {
+			switch dt {
+			case "string":
+				router.StaticRoutes = append(router.StaticRoutes, r.(string))
+			case "[]string":
+				router.StaticRoutes = r.([]string)
+			}
+		}
+
+		// Get NAT rules
+		if r, dt, err := row.GetColumnValue("nat", result.Columns); err == nil {
+			switch dt {
+			case "string":
+				router.NAT = append(router.NAT, r.(string))
+			case "[]string":
+				router.NAT = r.([]string)
+			}
+		}
+
+		// Get Load Balancers
+		if r, dt, err := row.GetColumnValue("load_balancer", result.Columns); err == nil {
+			switch dt {
+			case "string":
+				router.LoadBalancer = append(router.LoadBalancer, r.(string))
+			case "[]string":
+				router.LoadBalancer = r.([]string)
+			}
+		}
+
+		// Get Policies
+		if r, dt, err := row.GetColumnValue("policies", result.Columns); err == nil {
+			switch dt {
+			case "string":
+				router.Policies = append(router.Policies, r.(string))
+			case "[]string":
+				router.Policies = r.([]string)
+			}
+		}
+
+		routers = append(routers, router)
+	}
+
+	return routers, nil
 }
 
 func init() {

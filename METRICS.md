@@ -131,6 +131,18 @@ This exporter follows [Prometheus metric naming best practices](https://promethe
 | `ovn_logical_switch_port_binding` | Gauge | Association between logical switch and port (always 1) | `system_id`, `uuid`, `port` |
 | `ovn_logical_switch_port_tunnel_key` | Gauge | Tunnel key value for logical switch port | `system_id`, `uuid` |
 
+### Logical Routers
+
+| Metric | Type | Description | Labels |
+|--------|------|-------------|--------|
+| `ovn_logical_router_info` | Gauge | Information about logical router (always 1) | `system_id`, `uuid`, `name` |
+| `ovn_logical_router_external_id` | Gauge | External IDs for logical routers (always 1) | `system_id`, `uuid`, `key`, `value` |
+| `ovn_logical_router_ports` | Gauge | Number of ports connected to logical router | `system_id`, `uuid` |
+| `ovn_logical_router_static_routes` | Gauge | Number of static routes configured on logical router | `system_id`, `uuid` |
+| `ovn_logical_router_nat_rules` | Gauge | Number of NAT rules configured on logical router | `system_id`, `uuid` |
+| `ovn_logical_router_load_balancers` | Gauge | Number of load balancers associated with logical router | `system_id`, `uuid` |
+| `ovn_logical_router_policies` | Gauge | Number of routing policies configured on logical router | `system_id`, `uuid` |
+
 ## Performance Metrics
 
 ### Coverage Metrics
